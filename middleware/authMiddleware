@@ -1,0 +1,44 @@
+const jwt = require('jsonwebtoken')
+const SECRET_KEY = require('dotenv').config
+
+const authenticateToken = (req, res, next) => {
+	const token = req.header('Authorization')?.replace('Bearer ', '')
+
+	if (!token) {
+		return res.status(401).json({ error: 'Нет авторизационного токена' })
+	}
+
+	jwt.verify(token, SECRET_KEY, (err, decoded) => {
+		if (err) {
+			return res.status(403).json({ error: 'Неверный или истекший токен' })
+		}
+
+		req.user = decoded
+		next()
+	})
+}
+
+const refreshTokenMiddleware = (req, res, next) => {
+	const { refreshToken } = req.body
+	if (!refreshToken) {
+		return res.status(401).json({ error: 'Refresh token отсутствует' })
+	}
+
+	jwt.verify(refreshToken, REFRESH_SECRET_KEY, (err, decoded) => {
+		if (err) {
+			return res
+				.status(403)
+				.json({ error: 'Неверный или истекший refresh token' })
+		}
+	})
+
+	const newAccessToken = jwt.sign(
+		{ userId: decoded.userId, email: decoded.email },
+		SECRET_KEY,
+		{ expiresIn: '1h' }
+	)
+
+	res.json({ accessToken: newAccessToken })
+}
+
+module.exports = { authenticateToken, refreshTokenMiddleware }
